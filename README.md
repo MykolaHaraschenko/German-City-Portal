@@ -2,6 +2,8 @@
 
 Germany Citizen Portal is a state-of-the-art secure digital portal for public services in Saxony, Germany. It demonstrates modern EUDI Wallet verification and credential issuance, dynamic multi-step public service applications, and a premium glassmorphic UI.
 
+<img src="./assets/main_page.png" alt="logo"/>
+
 ---
 
 ## 🌟 Key Features
