@@ -1,0 +1,53 @@
+issuer:
+  document-types:
+    - id: "urn:credential:proof_of_residence_registration"
+      display-name: "Proof of Residence Registration"
+      background-color: "#2E7D32"
+      text-color: "#FFFFFF"
+      logo-uri: "https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+      logo-alt-text: "EU Flag"
+      claims:
+        - name: given_name
+          required: true
+        - name: residential_address
+          required: true
+        - name: date_of_registration
+          required: true
+        - name: registration_authority
+          required: false
+
+    - id: "urn:credential:parking_permit"
+      display-name: "Parking Permit"
+      background-color: "#1565C0"
+      text-color: "#FFFFFF"
+      logo-uri: "https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+      logo-alt-text: "EU Flag"
+      claims:
+        - name: holder_name
+          required: true
+        - name: vehicle_plate
+          required: true
+        - name: parking_zone
+          required: true
+        - name: valid_from
+          required: true
+        - name: valid_until
+          required: true
+
+    - id: "urn:credential:tax_clearance_certificate"
+      display-name: "Tax Clearance Certificate"
+      background-color: "#E65100"
+      text-color: "#FFFFFF"
+      logo-uri: "https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg"
+      logo-alt-text: "EU Flag"
+      claims:
+        - name: taxpayer_name
+          required: true
+        - name: tax_id
+          required: true
+        - name: tax_year
+          required: true
+        - name: clearance_status
+          required: true
+        - name: issued_by
+          required: false

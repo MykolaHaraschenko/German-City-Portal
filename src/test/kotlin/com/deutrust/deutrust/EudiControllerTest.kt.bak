@@ -1,0 +1,135 @@
+package com.deutrust.deutrust
+
+import com.deutrust.deutrust.application.controller.EudiProtocolController
+import com.deutrust.deutrust.application.controller.VerifierController
+import com.deutrust.deutrust.domain.model.EudiSession
+import com.deutrust.deutrust.domain.service.VerifierService
+import com.deutrust.deutrust.infrastructure.eudi.EudiClient
+import jakarta.servlet.http.HttpServletRequest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.mock
+import java.util.UUID
+
+class EudiControllerTest {
+
+    private lateinit var verifierService: VerifierService
+    private lateinit var issuerService: IssuerService
+    private lateinit var eudiClient: EudiClient
+
+    private lateinit var verifierController: VerifierController
+    private lateinit var issuerController: IssuerController
+    private lateinit var eudiProtocolController: EudiProtocolController
+
+    private lateinit var mockServletRequest: HttpServletRequest
+
+    @BeforeEach
+    fun setUp() {
+        verifierService = mock(VerifierService::class.java)
+        issuerService = mock(IssuerService::class.java)
+        eudiClient = mock(EudiClient::class.java)
+
+        verifierController = VerifierController(verifierService, "")
+        issuerController = IssuerController(issuerService, "")
+        eudiProtocolController = EudiProtocolController(verifierService, issuerService, eudiClient, "")
+
+        mockServletRequest = mock(HttpServletRequest::class.java)
+        `when`(mockServletRequest.scheme).thenReturn("https")
+        `when`(mockServletRequest.serverName).thenReturn("verifier.example.com")
+        `when`(mockServletRequest.serverPort).thenReturn(443)
+    }
+
+    @Test
+    fun testCreateSessionAndDeepLink() {
+        val transactionId = UUID.randomUUID()
+        val mockSession = EudiSession(
+            id = transactionId,
+            businessId = "smb-store-001",
+            requestedClaims = "[\"given_name\"]",
+            nonce = "mock-nonce",
+            state = "mock-state"
+        )
+
+        `when`(verifierService.createSession("smb-store-001", listOf("given_name"))).thenReturn(mockSession)
+
+        val request = VerifierController.CreateSessionRequest("smb-store-001", listOf("given_name"))
+        val response = verifierController.createSession(request, mockServletRequest)
+
+        assertNotNull(response.body)
+        assertEquals("PENDING", response.body?.status)
+        assertEquals("smb-store-001", response.body?.businessId)
+        assertEquals(
+            "https://verifier.example.com/api/v1/openid4vp/qr-bridge/$transactionId",
+            response.body?.qrCodePayload
+        )
+    }
+
+    @Test
+    fun testCreateCredentialOffer() {
+        val offerId = UUID.randomUUID()
+        val mockCredential = IssuedCredential(
+            id = offerId,
+            userId = "customer-999",
+            credentialType = "LoyaltyCard",
+            credentialData = "{}",
+            preAuthorizedCode = "pre-auth-code-123"
+        )
+
+        `when`(issuerService.createCredentialOffer("customer-999", "LoyaltyCard", mapOf("loyalty_tier" to "Gold")))
+            .thenReturn(mockCredential)
+
+        val request = IssuerController.CreateOfferRequest("customer-999", "LoyaltyCard", mapOf("loyalty_tier" to "Gold"))
+        val response = issuerController.createOffer(request, mockServletRequest)
+
+        assertNotNull(response.body)
+        assertEquals("OFFERED", response.body?.status)
+        assertEquals("customer-999", response.body?.userId)
+        assertEquals(
+            "openid-credential-offer://?credential_offer_uri=https://verifier.example.com/api/v1/openid4vci/credential-offer/$offerId",
+            response.body?.deepLink
+        )
+    }
+
+    @Test
+    fun testGetRequestObject() {
+        val transactionId = UUID.randomUUID()
+        val mockSignedJws = "eyJhbGciOiJFUzI1NiIsInR5cCI6Im9hdXRoLWF1dGh6LXJlcStqd3QifQ.eyJjbGllbnRfaWQiOiJodHRwczovL3ZlcmlmaWVyLmV4YW1wbGUuY29tIn0.mock-sig"
+
+        `when`(verifierService.getRequestObject(transactionId, "https://verifier.example.com"))
+            .thenReturn(mockSignedJws)
+
+        val response = eudiProtocolController.getRequestObject(transactionId, mockServletRequest)
+
+        assertNotNull(response.body)
+        assertEquals(mockSignedJws, response.body)
+    }
+
+    @Test
+    fun testReceiveDirectPostJsonWithNestedVpToken() {
+        val transactionId = UUID.randomUUID()
+        val mockSession = EudiSession(
+            id = transactionId,
+            businessId = "smb-store-001",
+            requestedClaims = "[\"given_name\"]",
+            nonce = "mock-nonce",
+            state = "mock-state"
+        )
+        
+        `when`(verifierService.handleDirectPost(transactionId, "eyJraw-token", "mock-state"))
+            .thenReturn(mockSession)
+
+        val payload = mapOf(
+            "vp_token" to mapOf(
+                "pid-sd-jwt" to listOf("eyJraw-token")
+            ),
+            "state" to "mock-state"
+        )
+
+        val response = eudiProtocolController.receiveDirectPostJson(transactionId, payload)
+        assertEquals(200, response.statusCode.value())
+        assertEquals("accepted", response.body?.get("status"))
+    }
+}

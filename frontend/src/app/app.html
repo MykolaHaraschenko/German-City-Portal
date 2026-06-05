@@ -1,0 +1,15 @@
+<div class="app-wrapper" style="display: flex; flex-direction: column; min-height: 100vh;">
+  <app-header (loginRequest)="onLoginRequest()"></app-header>
+  
+  <main class="app-main-content" style="flex: 1; display: flex; flex-direction: column;">
+    <router-outlet></router-outlet>
+  </main>
+  
+  <app-footer></app-footer>
+  
+  <app-eudi-modal 
+    *ngIf="authService.loginModalOpen()" 
+    (close)="onModalClose()" 
+    (loginSuccess)="onLoginSuccess($event)"
+  ></app-eudi-modal>
+</div>
